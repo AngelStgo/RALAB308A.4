@@ -12,7 +12,7 @@ const getFavouritesBtn = document.getElementById("getFavouritesBtn");
 
 // Step 0: Store your API key here for reference and easy access.
 const API_KEY = "live_FDHhpCq6Yx7U2Qd6iQ5J3DVfHPS68ziGmN6FpxYu0b1fDYF40uISfTXwRcYdMwar";
-
+//! how do we secure our key!? from getting leaked.
 /**
  * 1. Create an async function "initialLoad" that does the following:
  * - Retrieve a list of breeds from the cat API using fetch().
@@ -24,15 +24,25 @@ const API_KEY = "live_FDHhpCq6Yx7U2Qd6iQ5J3DVfHPS68ziGmN6FpxYu0b1fDYF40uISfTXwRc
 async function initialLoad (){
   try {
     //send request to cat api
-    const res = await fetch("https://api.thecatapi.com/v1/breeds"); //add link of breeds here
-    const breeds = await res.json();
+    const res = await fetch("https://api.thecatapi.com/v1/breeds", {
+      headers: {
+          'x-api-key': API_KEY // why do we need the key as object from fetch.
+      }
+  });
+const breeds = await res.json();
+
+breedSelect.innerHTML = breeds.map(
+  (breed) => `<option value=${breed.id}>${breed.name}</option>`
+);
 
     console.log(breeds);
+    breedSelection();
   } catch (e) {
     console.error(e);
   }
 }
 initialLoad();
+
 
 /**
  * 2. Create an event handler for breedSelect that does the following:
@@ -48,6 +58,20 @@ initialLoad();
  * - Each new selection should clear, re-populate, and restart the Carousel.
  * - Add a call to this function to the end of your initialLoad function above to create the initial carousel.
  */
+
+async function breedSelection() {
+  try { // res = response
+    const breedId = breedSelect.value;
+    const res = await axios.get(`https://api.thecatapi.com/v1/images/search?breed_ids=${breedId}`) // axios does?!
+    const imgs = res.data;
+    imgs.forEach((img) => {
+      Carousel.appendCarousel(Carousel.createCarouselItem(img.url, "a supposed cat image!", img.id))
+    });
+  } catch (error) {
+    console.error(error)
+  }
+};
+
 
 /**
  * 3. Fork your own sandbox, creating a new one named "JavaScript Axios Lab."
