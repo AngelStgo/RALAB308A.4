@@ -13,6 +13,20 @@ const getFavouritesBtn = document.getElementById("getFavouritesBtn");
 // Step 0: Store your API key here for reference and easy access.
 const API_KEY = "live_FDHhpCq6Yx7U2Qd6iQ5J3DVfHPS68ziGmN6FpxYu0b1fDYF40uISfTXwRcYdMwar";
 //! how do we secure our key!? from getting leaked.
+// axios.interceptors.request.use( config => {
+//   console.log(new Date);
+// }) 
+axios.defaults.baseURL = "https://api.thecatapi.com/v1";
+axios.defaults.headers.common["x-api-key"] = API_KEY;
+
+axios.interceptors.request.use((config) => {
+  console.log("Request started:", config.url);
+  config.metadata = { startTime: new Date() };
+  document.body.style.cursor = "progress"; 
+  progressBar.style.width = "0%"; 
+  return config;
+});
+
 /**
  * 1. Create an async function "initialLoad" that does the following:
  * - Retrieve a list of breeds from the cat API using fetch().
@@ -21,27 +35,57 @@ const API_KEY = "live_FDHhpCq6Yx7U2Qd6iQ5J3DVfHPS68ziGmN6FpxYu0b1fDYF40uISfTXwRc
  *  - Each option should display text equal to the name of the breed.
  * This function should execute immediately.
  */
-async function initialLoad (){
+// async function initialLoad (){
+//   try {
+//     //send request to cat api
+//     const res = await fetch("https://api.thecatapi.com/v1/breeds", {
+//       headers: {
+//           'x-api-key': API_KEY // why do we need the key as object from fetch.
+//       }
+//   });
+// const breeds = await res.json();
+
+// breedSelect.innerHTML = breeds.map(
+//   (breed) => `<option value=${breed.id}>${breed.name}</option>`
+// );
+
+//     console.log(breeds);
+//     breedSelection();
+//   } catch (e) {
+//     console.error(e);
+//   }
+// }
+// initialLoad();
+
+async function initialLoad () {
   try {
-    //send request to cat api
-    const res = await fetch("https://api.thecatapi.com/v1/breeds", {
-      headers: {
-          'x-api-key': API_KEY // why do we need the key as object from fetch.
-      }
-  });
-const breeds = await res.json();
+      const res = await axios.get("/breeds", {
+          // headers: {
+          //     'x-api-key': API_KEY
+          //   }
+      })
 
-breedSelect.innerHTML = breeds.map(
-  (breed) => `<option value=${breed.id}>${breed.name}</option>`
-);
+      // const breeds = await res.json()
+      const breeds = res.data
 
-    console.log(breeds);
-    breedSelection();
+      //* create new options for each of the breeds by using forEach method 
+      breeds.forEach(breed => {
+          const options = document.createElement('option')
+          options.value = breed.id 
+          options.textContent = breed.name
+
+          options.classList.add('options-list')
+
+          //* append each option to breed select
+          breedSelect.appendChild(options)
+      })
+
   } catch (e) {
-    console.error(e);
+      console.error(e)
   }
 }
-initialLoad();
+initialLoad()
+
 
 
 /**
@@ -62,8 +106,9 @@ initialLoad();
 async function breedSelection() {
   try { // res = response
     const breedId = breedSelect.value;
-    const res = await axios.get(`https://api.thecatapi.com/v1/images/search?breed_ids=${breedId}`) // axios does?!
+    const res = await axios.get(` https://api.thecatapi.com/v1/images/search?limit=10&breed_ids=${breedId}`) // review axios
     const imgs = res.data;
+    Carousel.clear();
     imgs.forEach((img) => {
       Carousel.appendCarousel(Carousel.createCarouselItem(img.url, "a supposed cat image!", img.id))
     });
@@ -72,10 +117,50 @@ async function breedSelection() {
   }
 };
 
+const headers = new Headers({
+  "Content-Type": "application/json",
+  "x-api-key": "API_KEY"
+});
 
-/**
- * 3. Fork your own sandbox, creating a new one named "JavaScript Axios Lab."
- */
+breedSelect.addEventListener("change", async (e) => {
+
+  const breedId = e.target.value 
+
+  //this will stop the function if an empty string was choosen 
+  if(breedId === '') return;
+
+  try {
+      //cache the breed images
+      const response = await axios.get(`/images/search?breed_ids=${breedId}&limit=5`)
+      //we are storing the images that are returning from our res 
+      const images = response.data;
+      console.log(images)
+
+      //each selectoin should clear, re-populate and restart the caoursel. in order to do this we need to clear() and add each image to the image url. This part we need a for each method 
+      Carousel.clear()
+
+      // the carousel is making these images
+      images.forEach(image => {
+          const carouselItem = Carousel.createCarouselItem(image.url|| "Cat Image", image.id);
+          Carousel.appendCarousel(carouselItem);
+      });
+      
+      //Use the other data you have been given to create an informational section within the infoDump element. We want to populate it with the bread details 
+      const breedData = images[0].breeds[0]; 
+      infoDump.innerHTML = `
+          <h2>${breedData.name}</h2>
+          <p>${breedData.description}</p>
+          <p><strong>Temperament:</strong> ${breedData.temperament}</p>
+          <p><strong>Origin:</strong> ${breedData.origin}</p>
+      `;
+
+  } catch (e) {
+      console.error(e)
+  }
+
+
+})
+
 /**
  * 4. Change all of your fetch() functions to axios!
  * - axios has already been imported for you within index.js.
@@ -107,6 +192,14 @@ async function breedSelection() {
  *   once or twice per request to this API. This is still a concept worth familiarizing yourself
  *   with for future projects.
  */
+
+function updateProgress(event) {
+  if (event.lengthComputable) {
+      const percentComplete = (event.loaded / event.total) * 100;
+      progressBar.style.width = `${percentComplete}%`;
+  }
+}
+
 
 /**
  * 7. As a final element of progress indication, add the following to your axios interceptors:
